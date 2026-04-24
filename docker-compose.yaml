@@ -1,0 +1,56 @@
+﻿services:
+
+  # в”Ђв”Ђ PostgreSQL database в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: qwerty12345
+      POSTGRES_DB: pixelrun
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d pixelrun"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # в”Ђв”Ђ ASP.NET Core backend (PixelRun server) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      # Override connection string to point at the db container
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/pixelrun.db
+      - Jwt__Issuer=PixelRunAPI
+      - Jwt__Audience=PixelRunGame
+      - Jwt__Key=PIXELRUN_SUPER_SECRET_KEY_MIN32CHARS_HERE!
+      - AdminKey=CHANGE_ME_ADMIN_SECRET_KEY
+    volumes:
+      # Persist the SQLite database file between restarts
+      - api_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # в”Ђв”Ђ React frontend served by Nginx в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "7034:80"
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+  api_data:

@@ -1,0 +1,24 @@
+# в”Ђв”Ђ Stage 1 вЂ” Build React app в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy dependency files explicitly (not via glob) to guarantee package.json lands
+COPY pixelrun-site/pixelrun-react/package.json ./
+# Copy lock file only if it exists (the * makes it optional)
+COPY pixelrun-site/pixelrun-react/package-lock.json* ./
+
+RUN npm install
+
+COPY pixelrun-site/pixelrun-react/. ./
+RUN npm run build
+
+# в”Ђв”Ђ Stage 2 вЂ” Serve with Nginx в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+FROM nginx:alpine
+
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Custom nginx config вЂ” proxy /api/* and /ws/* to the backend
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
